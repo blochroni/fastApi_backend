@@ -142,6 +142,14 @@ DATABASE_URL = f"postgresql://postgres:{db_password}@localhost:5432/trip_db"
 sqlalchemy_utils.init(pg_conn_string=DATABASE_URL)
 
 app = FastAPI()
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 #handler = Mangum(app)
 session_maker = sqlalchemy_utils.get_session_maker()
 
@@ -647,19 +655,4 @@ async def delete_expense(expense_id: UUID, usermail: str = Depends(get_current_u
         active_session.rollback()  # Rollback any changes made during this session.
         raise HTTPException(status_code=500, detail="Internal Server Error: " + str(e))
 
-
-if __name__ == '__main__':
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    #uvicorn.run(app=app, host='0.0.0.0', port=8000)
-    #uvicorn.run(app=app, host=Bar_host, port=8000)
-    #uvicorn.run(app=app, host=Roni_host, port=8000)
-    #uvicorn.run(app=app, host='192.168.1.40', port=8000)
-    uvicorn.run(app=app, host='127.0.0.1', port=8000)
 
