@@ -143,7 +143,7 @@ sqlalchemy_utils.init(pg_conn_string=DATABASE_URL)
 
 app = FastAPI()
 
-    app.add_middleware(
+app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_credentials=True,
