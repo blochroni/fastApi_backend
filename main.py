@@ -177,6 +177,7 @@ def login(user_data: UserLogin):
     """
     with session_maker() as active_session:
         # Find user by email
+        print(DATABASE_URL)
         user = active_session.query(User).filter(User.usermail == user_data.usermail).first()
 
         # If user doesn't exist or password is wrong, return an error
