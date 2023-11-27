@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import OperationalError, DatabaseError
 import logging
-#from mangum import Mangum
+#from mangum import Mangu
 
 logging.basicConfig(
     filename='app.log',
