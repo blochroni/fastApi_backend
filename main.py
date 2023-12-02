@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import OperationalError, DatabaseError
 import logging
-#from mangum import Mangu
 
 logging.basicConfig(
     filename='app.log',
@@ -177,7 +176,6 @@ def login(user_data: UserLogin):
     """
     with session_maker() as active_session:
         # Find user by email
-        print(DATABASE_URL)
         user = active_session.query(User).filter(User.usermail == user_data.usermail).first()
 
         # If user doesn't exist or password is wrong, return an error
@@ -250,8 +248,6 @@ async def get_my_trips_summary(usermail: str = Depends(get_current_user)):
                 trips_response.append(trip_resp)
 
             # Return the structured response
-            print("hii")
-            print(trips_response)
             return {"trips": trips_response}
 
     except NoResultFound:
@@ -327,8 +323,6 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
             if not trip:
                 raise HTTPException(status_code=404, detail="Trip not found or not owned by the current user")
             expenses = active_session.query(Expense).filter(Expense.trip_id == trip.id).all()
-            # for expense in expenses:
-            #     print(f"Expense ID: {expense.id}, Item: {expense.item}, Cost: {expense.cost}, category={expense.category}, date_created={expense.date_created}")
             expenses_response = [ExpenseResponse(
                 expense_id=exp.id,
                 item=exp.item,
@@ -337,7 +331,6 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
                 category=exp.category,
                 date_created=exp.date_created
             ) for exp in expenses]
-            # print({"trip_id": trip_id, "expenses": expenses_response})
             return {"trip_id": trip_id, "expenses": expenses_response}
 
     except HTTPException:
