@@ -1,0 +1,5 @@
+2024-01-22 21:41:47 - ERROR - Error while deleting Trip ID: 3cf939ee-663a-4971-b77c-8900d97ec23e and associated expenses for User: . Error: name 'c' is not defined
+2024-02-03 12:09:20 - INFO - Received request for trip details: trip_id=b0fd0dad-20df-4b02-996b-0f5315c44670, usermail=bardabun@gmail.com
+2024-02-03 12:11:16 - INFO - Received request for trip details: trip_id=b0fd0dad-20df-4b02-996b-0f5315c44670, usermail=bardabun@gmail.com
+2024-02-03 12:13:19 - INFO - Received request for trip details: trip_id=c1bd15e8-0f0a-4d54-84b9-b69d180856df, usermail=bardabun@gmail.com
+2024-02-03 12:13:37 - INFO - Received request for trip details: trip_id=b0fd0dad-20df-4b02-996b-0f5315c44670, usermail=bardabun@gmail.com

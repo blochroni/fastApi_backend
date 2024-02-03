@@ -1,0 +1,8 @@
+inside ubuntu@ip-172-31-42-205:~/fastApi_backend$ -> write: psql -U postgres -h localhost -d trip_db  -> the pass is LIdor123
+
+then you can query the database for example: SELECT * FROM trips LIMIT 1;
+
+
+user: postgres
+db: trip_db
+pass LIdor123

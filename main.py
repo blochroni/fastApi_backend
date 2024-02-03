@@ -16,6 +16,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import OperationalError, DatabaseError
 import logging
+import firebase_admin
+from firebase_admin import credentials, auth
+
+cred = credentials.Certificate("travelsmartfastapi-firebase-adminsdk.json")
+firebase_admin.initialize_app(cred)
+
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+dotenv.load_dotenv()
+
+db_password = os.getenv('DB_PASSWORD')
+SECRET_KEY = os.getenv('SECRET_KEY')
+ALGORITHM = os.getenv('ALGORITHM')
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = os.getenv("SMTP_PORT")
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+# change it -> because that unprofessional terms
+Bar_host = os.getenv('Bar_host')
+Roni_host = os.getenv('Roni_host')
+
+
+def send_verification_email(receiver_email, verification_link):
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = receiver_email
+    msg['Subject'] = "Verify Your Email"
+    body = f"Please verify your email by clicking on this link: <a href='{verification_link}'>Verify Email</a>"
+    msg.attach(MIMEText(body, 'html'))
+
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_ADDRESS, receiver_email, msg.as_string())
+        server.quit()
+        print("Email sent successfully")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+
 
 logging.basicConfig(
     filename='app.log',
@@ -28,15 +72,7 @@ logger = logging.getLogger(__name__)
 # When you use the logger, the messages will be written to 'app.log' with timestamps
 #logger.info("This message will be written to app.log with a timestamp.")
 
-dotenv.load_dotenv()
 
-db_password = os.getenv('DB_PASSWORD')
-SECRET_KEY = os.getenv('SECRET_KEY')
-ALGORITHM = os.getenv('ALGORITHM')
-
-# change it -> because that unprofessional terms
-Bar_host = os.getenv('Bar_host')
-Roni_host = os.getenv('Roni_host')
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login/")
 
@@ -149,41 +185,50 @@ app.add_middleware(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-#handler = Mangum(app)
 session_maker = sqlalchemy_utils.get_session_maker()
-
 
 @app.post("/login/")
 def login(user_data: UserLogin):
     """
-    Authenticate a user based on email and password.
+    Authenticate a user based on their email and password, and verify their email status via Firebase.
 
-    This function receives user login data, checks it against the database, and
-    if the user is authenticated successfully, returns a JWT token for further interactions.
+    This endpoint:
+    - Verifies user credentials against the database.
+    - Checks if the user's email is verified with Firebase.
+    - Updates the local database with the email verification status.
+    - Generates and returns a JWT token for authenticated sessions.
 
     Parameters:
-    - user_data (UserLogin): A data model containing user's email and password.
+    - user_data (UserLogin): A data model containing the user's email (usermail) and password.
 
-    Returns:
-    - dict: A dictionary with status, a message, and a JWT token upon successful login.
+    Response:
+    - On successful authentication and email verification, returns a success status, a message, and a JWT token.
+    - Returns an HTTP 400 error if authentication fails or the email is not verified.
 
     Raises:
-    - HTTPException: If the email doesn't exist in the database, or if the password is incorrect.
+    - HTTPException: With status code 400 for invalid credentials or unverified email.
 
     Note:
-    For real-world applications, use a more secure method to hash and verify passwords,
-    such as bcrypt or Argon2.
+    - The JWT token expires after a predefined duration (e.g., 1000 minutes).
     """
     with session_maker() as active_session:
-        # Find user by email
         user = active_session.query(User).filter(User.usermail == user_data.usermail).first()
 
-        # If user doesn't exist or password is wrong, return an error
-        if not user or user.hashed_password != user_data.hashed_password:  # For real-world apps, use a hashing library like bcrypt or Argon2 to hash and verify passwords
+        if not user or user.hashed_password != user_data.hashed_password:
             raise HTTPException(status_code=400, detail="Invalid email or password")
 
+        # Check the email verification status with Firebase
+        firebase_user = auth.get_user_by_email(user_data.usermail)
+        if not firebase_user.email_verified:
+            raise HTTPException(status_code=400, detail="Email not verified")
+
+        # Update is_email_verified in your database
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            active_session.commit()
+
         # Create a token for the authenticated user
-        expiration = timedelta(minutes=1000)  # Set token to expire in 1 hour
+        expiration = timedelta(minutes=1000)
         token = create_jwt_token(data={"usermail": user.usermail}, expires_delta=expiration)
         return {"status": "success", "message": "Login successful", "token": token}
 
@@ -231,7 +276,6 @@ async def get_my_trips_summary(usermail: str = Depends(get_current_user)):
             for trip in trips:
                 # For each trip, get its associated expenses
                 expenses = active_session.query(Expense).filter(Expense.trip_id == trip.id).all()
-                #expenses_response = [ExpenseResponse(item=exp.item, cost=exp.cost) for exp in expenses]
 
                 # Calculate the total expense for the trip
                 total_expense = sum(exp.cost for exp in expenses)
@@ -242,8 +286,8 @@ async def get_my_trips_summary(usermail: str = Depends(get_current_user)):
                     destination=trip.destination,
                     startDate=trip.startDate,
                     endDate=trip.endDate,
-                    #expenses=expenses_response,
-                    total_expense=total_expense  # Add this field to the TripResponse model as well
+                    total_expense=total_expense,  # Add this field to the TripResponse model as well
+                    budget=trip.budget
                 )
                 trips_response.append(trip_resp)
 
@@ -299,23 +343,6 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
     - If there's a database connection issue or any other unexpected error, appropriate error
       handlers are in place. Details about the specific trip ID and user are logged in case of errors.
     """
-    # with session_maker() as active_session:
-    #     # Ensure the trip belongs to the current user
-    #     trip = active_session.query(Trip).filter(Trip.id == trip_id, Trip.user_id == usermail).first()
-    #     if not trip:
-    #         raise HTTPException(status_code=404, detail="Trip not found or not owned by the current user")
-    #
-    #     expenses = active_session.query(Expense).filter(Expense.trip_id == trip.id).all()
-    #
-    #     expenses_response = [ExpenseResponse(
-    #         expense_id=exp.id,
-    #         item=exp.item,
-    #         cost=exp.cost,
-    #         day=exp.day,
-    #         category=exp.category
-    #     ) for exp in expenses]
-    #
-    #     return {"trip_id": trip_id, "expenses": expenses_response}
     try:
         with session_maker() as active_session:
             # Ensure the trip belongs to the current user
@@ -349,17 +376,31 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
 @app.post("/add-user/")
 def add_user(user: userCreate):
     try:
+        # Create Firebase user
+        firebase_user = auth.create_user(
+            email=user.usermail,
+            email_verified=False,
+            password=user.hashed_password,
+            display_name=f"{user.first_name} {user.last_name}"
+        )
+
+        # Generate Firebase email verification link
+        firebase_verification_link = auth.generate_email_verification_link(user.usermail)
+
+        # Send the Firebase verification link via email
+        send_verification_email(user.usermail, firebase_verification_link)
+
+        # Add user to your database (without email verification)
         with session_maker() as active_session:
-            new_user = User(user.usermail, user.first_name, user.last_name, user.hashed_password)
+            new_user = User(user.usermail, user.first_name, user.last_name, user.hashed_password, is_email_verified=False)
             active_session.add(new_user)
             active_session.commit()
 
-            # Create a token for the new user
-            expiration = timedelta(minutes=1200)  # Set token to expire in 1 hour
-            token = create_jwt_token(data={"usermail": user.usermail}, expires_delta=expiration)
+        return {"status": "success", "message": "User added successfully, please verify your email"}
 
-            return {"status": "success", "message": "User added successfully", "token": token}
-
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=400, detail="Error in user registration")
     except DatabaseError:
         logger.error(f"Database error encountered when adding user: {user.usermail}")
         active_session.rollback()
@@ -369,6 +410,7 @@ def add_user(user: userCreate):
         logger.error(f"Error while adding user: {user.usermail}. Error: {e}")
         active_session.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.get("/test/")
 def test():
@@ -413,7 +455,7 @@ def add_trip(trip: TripCreate, usermail: str = Depends(get_current_user)):
 
             if not user:
                 raise HTTPException(status_code=400, detail="User not found")
-            new_trip = Trip(destination=trip.destination, startDate=trip.startDate, endDate=trip.endDate, user_id=user.usermail)  # assuming `user_id` is the email in the Trip table
+            new_trip = Trip(destination=trip.destination, startDate=trip.startDate, endDate=trip.endDate, user_id=user.usermail, budget=trip.budget)  # assuming `user_id` is the email in the Trip table
             active_session.add(new_trip)
             active_session.commit()
             return {"status": "success", "message": "Trip added successfully", "id_trip": new_trip.id}
@@ -496,14 +538,6 @@ def add_expense(expense_data: ExpenseCreate, usermail: str = Depends(get_current
             logger.error(f"Error while adding expense for Trip ID: {expense_data.trip_id} and User: {usermail}. Error: {e}")
             active_session.rollback()  # Rollback transaction in case of unexpected errors
             raise HTTPException(status_code=500, detail="Internal Server Error")
-
-
-# @app.get("/trip-expenses/{trip_id}/{day}")
-# async def get_expenses_for_trip_and_day(trip_id: int, day: int, usermail: str = Depends(get_current_user)):
-#     with session_maker() as active_session:
-#         expenses = active_session.query(Expense).filter(Expense.trip_id == trip_id, Expense.day == day).all()
-#         expenses_response = [ExpenseResponse(item=exp.item, cost=exp.cost) for exp in expenses]
-#         return {"expenses": expenses_response}
 
 
 @app.delete("/delete-trip/{trip_id}")
@@ -648,5 +682,3 @@ async def delete_expense(expense_id: UUID, usermail: str = Depends(get_current_u
         logger.error(f"Error while deleting Expense ID: {expense_id} for User: {usermail}. Error: {e}")
         active_session.rollback()  # Rollback any changes made during this session.
         raise HTTPException(status_code=500, detail="Internal Server Error: " + str(e))
-
-

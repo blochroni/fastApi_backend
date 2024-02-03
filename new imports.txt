@@ -1,0 +1,9 @@
+from xmlrpc.client import Boolean
+import firebase_admin
+from firebase_admin import credentials
+
+pip install alembic
+pip install firebase_admin
+pip install sendgrid
+
+SENDGRID: LIdor313606ZXC!@

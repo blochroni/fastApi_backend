@@ -8,7 +8,8 @@ from typing import Optional, List
 class TripCreate(BaseModel):
     destination: str
     startDate: date
-    endDate: Optional[date]
+    endDate: Optional[date] = None
+    budget: Optional[float] = None
 
 
 class userCreate(BaseModel):
@@ -45,6 +46,7 @@ class TripResponse(BaseModel):
     id: UUID
     destination: str
     startDate: date
-    endDate: date
+    endDate: Optional[date] = None
     #expenses: List[ExpenseResponse]
     total_expense: float
+    budget: Optional[float] = None

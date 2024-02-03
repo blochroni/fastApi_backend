@@ -1,7 +1,7 @@
 import random
 import uuid
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -16,8 +16,9 @@ class User(Base):
     first_name = Column(String, index=True)
     last_name = Column(String, index=True)
     hashed_password = Column(String)
+    is_email_verified = Column(Boolean, default=False)
 
-    def __init__(self, usermail, first_name, last_name, hashed_password):
+    def __init__(self, usermail, first_name, last_name, hashed_password, is_email_verified=False):
         Base.__init__(self)
         # if id is None:
         #     id = random.randint(1, 1000)
@@ -26,6 +27,7 @@ class User(Base):
         self.first_name = first_name
         self.last_name = last_name
         self.hashed_password = hashed_password
+        self.is_email_verified = is_email_verified
 
 class Trip(Base):
     __tablename__ = "trips"
@@ -35,9 +37,10 @@ class Trip(Base):
     startDate = Column(DateTime)
     endDate = Column(DateTime, nullable=True)
     user_id = Column(String, ForeignKey(f"{User.__tablename__}.usermail"))
+    budget = Column(Float, nullable=True)
 
     # Constructor
-    def __init__(self, destination, startDate, endDate, user_id, id = None):
+    def __init__(self, destination, startDate, endDate, user_id, budget, id = None):
         Base.__init__(self)
         #if id is None:
             #id = random.randint(1, 1000)
@@ -46,6 +49,7 @@ class Trip(Base):
         self.startDate = startDate
         self.endDate = endDate
         self.user_id = user_id
+        self.budget = budget
 
 class Expense(Base):
     __tablename__ = "expenses"
