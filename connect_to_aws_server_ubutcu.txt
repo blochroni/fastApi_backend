@@ -1,0 +1,19 @@
+In pycharm terminal:   
+ubuntu@ip-172-31-42-205:~/fastApi_backend$
+
+connect to instance inside C:\Users\Rony\PycharmProjects\TravelSmart: ssh -i "fast_api_key.pem" ubuntu@ec2-16-171-135-67.eu-north-1.compute.amazonaws.com 
+run server: python3 -m uvicorn main:app
+pull git changes: git pull origin main
+git url: https://github.com/blochroni/fastApi_backend
+
+
+
+How to Deploy FastAPI on AWS EC2: Quick and Easy Steps! : https://www.youtube.com/watch?v=SgSnz7kW-Ko&t=19s
+
+
+how to connect to postgres with my dataBase: 
+1. psql -U postgres -h localhost -d trip_db
+2. Enter password: LIdor123
+Now you connect to trip_db=#
+3. Now you can enter queries, for example: select * from expenses;
+4. for exiting write \q and then enter

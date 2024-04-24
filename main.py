@@ -375,41 +375,58 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
 
 @app.post("/add-user/")
 def add_user(user: userCreate):
-    try:
-        # Create Firebase user
-        firebase_user = auth.create_user(
-            email=user.usermail,
-            email_verified=False,
-            password=user.hashed_password,
-            display_name=f"{user.first_name} {user.last_name}"
-        )
+    with session_maker() as active_session:
+        existing_user = active_session.query(User).filter(User.email == user.usermail).first()
 
-        # Generate Firebase email verification link
-        firebase_verification_link = auth.generate_email_verification_link(user.usermail)
+        # Check if user already exists
+        if existing_user:
+            if not existing_user.is_email_verified:
+                # User exists but hasn't verified their email, resend the verification link
+                try:
+                    firebase_verification_link = auth.generate_email_verification_link(user.usermail)
+                    send_verification_email(user.usermail, firebase_verification_link)
+                    return {"status": "success", "message": "User already registered but not verified. Verification email resent."}
+                except Exception as e:
+                    logger.error(f"Failed to resend verification email to: {user.usermail}. Error: {e}")
+                    raise HTTPException(status_code=400, detail="Failed to resend verification email")
+            else:
+                # User exists and is verified, should not register again
+                raise HTTPException(status_code=400, detail="Email already registered and verified")
 
-        # Send the Firebase verification link via email
-        send_verification_email(user.usermail, firebase_verification_link)
+        try:
+            # Create Firebase user
+            firebase_user = auth.create_user(
+                email=user.usermail,
+                email_verified=False,
+                password=user.hashed_password,
+                display_name=f"{user.first_name} {user.last_name}"
+            )
 
-        # Add user to your database (without email verification)
-        with session_maker() as active_session:
+            # Generate Firebase email verification link
+            firebase_verification_link = auth.generate_email_verification_link(user.usermail)
+
+            # Send the Firebase verification link via email
+            send_verification_email(user.usermail, firebase_verification_link)
+
+            # Add user to your database (without email verification)
             new_user = User(user.usermail, user.first_name, user.last_name, user.hashed_password, is_email_verified=False)
             active_session.add(new_user)
             active_session.commit()
 
-        return {"status": "success", "message": "User added successfully, please verify your email"}
+            return {"status": "success", "message": "User added successfully, please verify your email"}
 
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=400, detail="Error in user registration")
-    except DatabaseError:
-        logger.error(f"Database error encountered when adding user: {user.usermail}")
-        active_session.rollback()
-        raise HTTPException(status_code=500, detail="Database connection issue")
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=400, detail="Error in user registration")
+        except DatabaseError:
+            logger.error(f"Database error encountered when adding user: {user.usermail}")
+            active_session.rollback()
+            raise HTTPException(status_code=500, detail="Database connection issue")
 
-    except Exception as e:
-        logger.error(f"Error while adding user: {user.usermail}. Error: {e}")
-        active_session.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error while adding user: {user.usermail}. Error: {e}")
+            active_session.rollback()
+            raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/test/")
