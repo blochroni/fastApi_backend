@@ -376,7 +376,7 @@ async def get_trip_details(trip_id: UUID, usermail: str = Depends(get_current_us
 @app.post("/add-user/")
 def add_user(user: userCreate):
     with session_maker() as active_session:
-        existing_user = active_session.query(User).filter(User.email == user.usermail).first()
+        existing_user = active_session.query(User).filter(User.usermail == user.usermail).first()
 
         # Check if user already exists
         if existing_user:
