@@ -11,6 +11,12 @@ class TripCreate(BaseModel):
     endDate: Optional[date] = None
     budget: Optional[float] = None
 
+class TripUpdate(BaseModel):
+    destination: Optional[str] = None
+    startDate: Optional[date] = None
+    endDate: Optional[date] = None
+    budget: Optional[float] = None
+
 
 class userCreate(BaseModel):
     usermail: str

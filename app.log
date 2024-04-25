@@ -3,3 +3,4 @@
 2024-02-03 12:11:16 - INFO - Received request for trip details: trip_id=b0fd0dad-20df-4b02-996b-0f5315c44670, usermail=bardabun@gmail.com
 2024-02-03 12:13:19 - INFO - Received request for trip details: trip_id=c1bd15e8-0f0a-4d54-84b9-b69d180856df, usermail=bardabun@gmail.com
 2024-02-03 12:13:37 - INFO - Received request for trip details: trip_id=b0fd0dad-20df-4b02-996b-0f5315c44670, usermail=bardabun@gmail.com
+2024-04-25 01:37:09 - ERROR - Failed to resend verification email to: bloch.roni95@gmail.com. Error: Error while calling Auth service (TOO_MANY_ATTEMPTS_TRY_LATER).

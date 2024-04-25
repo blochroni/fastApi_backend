@@ -488,6 +488,48 @@ def add_trip(trip: TripCreate, usermail: str = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.put("/update-trip/{trip_id}")
+def update_trip(trip_id: UUID, trip_update: TripUpdate, usermail: str = Depends(get_current_user)):
+    """
+    Updates an existing trip with new details.
+
+    Parameters:
+    ----------
+    trip_id (UUID): The unique identifier of the trip to be updated.
+    trip_update (TripUpdate): The updated trip details.
+    usermail (str): The email of the authenticated user.
+
+    Returns:
+    -------
+    A dictionary with the operation status and a message.
+    """
+    try:
+        with session_maker() as active_session:
+            # Fetch the existing trip
+            trip = active_session.query(Trip).filter(Trip.id == trip_id, Trip.user_id == usermail).first()
+
+            if not trip:
+                raise HTTPException(status_code=404, detail="Trip not found")
+
+            # Update fields if they are provided
+            if trip_update.destination is not None:
+                trip.destination = trip_update.destination
+            if trip_update.startDate is not None:
+                trip.startDate = trip_update.startDate
+            if trip_update.endDate is not None:
+                trip.endDate = trip_update.endDate
+            if trip_update.budget is not None:
+                trip.budget = trip_update.budget
+
+            active_session.commit()
+            return {"status": "success", "message": "Trip updated successfully"}
+
+    except Exception as e:
+        logger.error(f"Error while updating trip for user: {usermail}. Error: {e}")
+        active_session.rollback()
+        raise HTTPException(status_code=500, detail="An error occurred during the update.")
+
+
 @app.post("/add-expense/")
 def add_expense(expense_data: ExpenseCreate, usermail: str = Depends(get_current_user)):
     """
