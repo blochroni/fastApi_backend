@@ -1,1 +1,7 @@
+__pycache__/
+*.pyc
+app.log
+connect_to_aws_server_ubutcu.txt
+fast_api_key.pem
+requiments command.txt
 
